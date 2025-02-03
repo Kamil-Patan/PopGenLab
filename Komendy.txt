@@ -1,0 +1,389 @@
+LAB1
+(GEiP) st12@bzc1:~/GEiP/lab1$ seqkit grep -p "scaffold4" /home/mkonczal/Teaching/GEiP/Data/Reference/SBS_final.scaffolds.fasta > scaffold4.fasta  
+# utworzenie indeksu
+(GEiP) st12@bzc1:~/GEiP/lab1$ samtools faidx scaffold4.fasta
+(GEiP) st12@bzc1:~/GEiP/lab1$ cut -f 2 scaffold4.fasta.fai
+9568156  -- dlugosc scaffolda
+
+#analiza jakosci
+#RUF				RUN
+C_ruf_08        SRS3209983      SRR7054138
+C_ruf_08        SRS3209983      SRR7054157
+
+run1
+cp ${FASTQ_DIR}/SRR7054138/SRR7054138_pass_1.fastq.gz .
+cp ${FASTQ_DIR}/SRR7054138/SRR7054138_pass_2.fastq.gz .
+• run2
+cp ${FASTQ_DIR}/SRR7054157/SRR7054157_pass_1.fastq.gz .
+cp ${FASTQ_DIR}/SRR7054157/SRR7054157_pass_2.fastq.gz .
+f1=SRR7054138_pass_1.fastq.gz
+f2=SRR7054138_pass_2.fastq.gz
+f3=SRR7054157_pass_1.fastq.gz
+f4=SRR7054157_pass_2.fastq.gz
+
+# fastqc RUF
+fastqc $f1 $f2
+fastqc $f3 $f4
+
+#filtracja
+#ruf
+fastp -i $f1 -I $f2 -o SRR7054138_pass_1.filt.fastq -O
+SRR7054138_pass_2.filt.fastq
+fastp -i $f3 -I $f4 -o SRR7054157_pass_1.filt.fastq -O
+SRR7054157_pass_2.filt.fastq
+
+# fastqc RUF filtered
+fastqc SRR7054138_pass_1.filt.fastq SRR7054138_pass_2.filt.fastq
+fastqc SRR7054157_pass_1.filt.fastq SRR7054157_pass_2.filt.fastq
+
+#indeksowanie genomu ref
+(GEiP) st12@bzc1:~/GEiP/lab1$ bwa index scaffold4.fasta
+
+BWA mem
+-R ->  read group header line such as '@RG\tID:foo\tSM:bar' [null]
+| pipe -> przekazanie do kolejnej komendy do wykonania, dzieki temu w wyniku mozemy miec np. tylko zmapowane/niezmapowane odzcyty, oszczednosc miejsca, zasobow w celu zapisania wyniku obu czynnosci
+-F4 -  flaga -> zachowac tylko te odczyty ktore mapuja sie do genomu
+#RUF				RUN
+C_ruf_08        SRS3209983      SRR7054138
+C_ruf_08        SRS3209983      SRR7054157
+
+bwa mem -t 10 -R '@RG\tID:SRR7054138\tSM:C_ruf_08\tLB:SRR7054138\tPL:ILLUMINA\tPU:lib1_unit' scaffold4.fasta SRR7054138_pass_1.filt.fastq SRR7054138_pass_2.filt.fastq \ 
+| samtools view -F 4 -o SRR7054138.Mapped.bam
+bwa mem -t 10 -R '@RG\tID:SRR7054157\tSM:C_ruf_08\tLB:SRR7054157\tPL:ILLUMINA\tPU:lib1_unit' scaffold4.fasta SRR7054157_pass_1.filt.fastq SRR7054157_pass_2.filt.fastq | samtools view -F 4 -o SRR7054157.Mapped.bam
+
+# sortowanie
+samtools sort -T bam SRR7054138.Mapped.bam > SRR7054138.Mapped.sorted.bam
+rm SRR7054138.Mapped.bam
+samtools sort -T bam SRR7054157.Mapped.bam > SRR7054157.Mapped.sorted.bam
+rm SRR7054157.Mapped.bam
+
+#usuwanie duplikatów
+picard MarkDuplicates REMOVE_DUPLICATES=true REMOVE_SEQUENCING_DUPLICATES=true AS=true I=SRR7054138.Mapped.sorted.bam M=test.metric_SRR7054138.txt O=SRR7054138.Mapped.sorted_DupRmv.bam 2> MarkDup_SRR7054138.log
+
+picard MarkDuplicates REMOVE_DUPLICATES=true REMOVE_SEQUENCING_DUPLICATES=true AS=true I=SRR7054157.Mapped.sorted.bam M=test.metric_SRR7054157.txt O=SRR7054157.Mapped.sorted_DupRmv.bam 2> MarkDup_SRR7054157.log
+
+rm SRR7054138.Mapped.sorted.bam
+rm SRR7054157.Mapped.sorted.bam
+
+#indeksowanie plików bam
+samtools index SRR7054138.Mapped.sorted_DupRmv.bam
+samtools index SRR7054157.Mapped.sorted_DupRmv.bam
+
+#falgstat
+samtools flagstats SRR7054138.Mapped.sorted_DupRmv.bam
+samtools flagstats SRR7054157.Mapped.sorted_DupRmv.bam
+
+#laczenie plikow
+samtools merge –r C_ruf_08.bam SRR7054138.Mapped.sorted_DupRmv.bam SRR7054157.Mapped.sorted_DupRmv.bam
+
+samtools index C_ruf_08.bam
+
+samtools tview --reference scaffold4.fasta C_ruf_08.bam
+
+#PYG
+C_pyg_22        SRS3209985      SRR7054140
+C_pyg_22        SRS3209985      SRR7054154
+
+run1
+cp ${FASTQ_DIR}/SRR7054140/SRR7054140_pass_1.fastq.gz .
+cp ${FASTQ_DIR}/SRR7054140/SRR7054140_pass_2.fastq.gz .
+• run2
+cp ${FASTQ_DIR}/SRR7054154/SRR7054154_pass_1.fastq.gz .
+cp ${FASTQ_DIR}/SRR7054154/SRR7054154_pass_2.fastq.gz .
+f1a=SRR7054140_pass_1.fastq.gz
+f2a=SRR7054140_pass_2.fastq.gz
+f3a=SRR7054154_pass_1.fastq.gz
+f4a=SRR7054154_pass_2.fastq.gz
+
+# fastqc PYG
+fastqc $f1a $f2a
+fastqc $f2a $f4a
+
+#flitracja
+#pyg
+fastp -i $f1a -I $f2a -o SRR7054140_pass_1.filt.fastq -O SRR7054140_pass_2.filt.fastq
+fastp -i $f3a -I $f4a -o SRR7054154_pass_1.filt.fastq -O SRR7054154_pass_2.filt.fastq
+
+# fastqc PYG filtered
+fastqc SRR7054140_pass_1.filt.fastq SRR7054140_pass_2.filt.fastq
+fastqc SRR7054154_pass_1.filt.fastq SRR7054154_pass_2.filt.fastq
+
+bwa mem -t 10 -R '@RG\tID:SRR7054140\tSM:C_pyg_22\tLB:SRR7054140\tPL:ILLUMINA\tPU:lib1_unit' scaffold4.fasta SRR7054140_pass_1.filt.fastq SRR7054140_pass_2.filt.fastq | samtools view -F 4 -o SRR7054140.Mapped.bam
+bwa mem -t 10 -R '@RG\tID:SRR7054154\tSM:C_pyg_22\tLB:SRR7054154\tPL:ILLUMINA\tPU:lib1_unit' scaffold4.fasta SRR7054154_pass_1.filt.fastq SRR7054154_pass_2.filt.fastq | samtools view -F 4 -o SRR7054154.Mapped.bam
+
+# sortowanie
+samtools sort -T bam SRR7054140.Mapped.bam > SRR7054140.Mapped.sorted.bam
+rm SRR7054140.Mapped.bam
+samtools sort -T bam SRR7054154.Mapped.bam > SRR7054154.Mapped.sorted.bam
+rm SRR7054154.Mapped.bam
+
+#usuwanie duplikatów
+picard MarkDuplicates REMOVE_DUPLICATES=true REMOVE_SEQUENCING_DUPLICATES=true AS=true I=SRR7054140.Mapped.sorted.bam M=test.metric_SRR7054140.txt O=SRR7054140.Mapped.sorted_DupRmv.bam 2> MarkDup_SRR7054140.log
+
+picard MarkDuplicates REMOVE_DUPLICATES=true REMOVE_SEQUENCING_DUPLICATES=true AS=true I=SRR7054154.Mapped.sorted.bam M=test.metric_SRR7054154.txt O=SRR7054154.Mapped.sorted_DupRmv.bam 2> MarkDup_SRR7054154.log
+
+rm SRR7054140.Mapped.sorted.bam
+rm SRR7054154.Mapped.sorted.bam
+
+#indeksowanie plików bam
+samtools index SRR7054140.Mapped.sorted_DupRmv.bam
+samtools index SRR7054154.Mapped.sorted_DupRmv.bam
+
+#falgstat
+samtools flagstats SRR7054140.Mapped.sorted_DupRmv.bam
+samtools flagstats SRR7054154.Mapped.sorted_DupRmv.bam
+
+#laczenie plikow
+samtools merge –r C_pyg_22.bam SRR7054140.Mapped.sorted_DupRmv.bam SRR7054154.Mapped.sorted_DupRmv.bam
+
+samtools index C_pyg_22.bam
+
+samtools tview --reference scaffold4.fasta C_pyg_22.bam
+
+
+# konwersja fasta na 2bit
+faToTwoBit ../../lab1/scaffold4.fasta scaffold4.2bit
+
+#zapis wielkosci scaffoldow do sizes.tab
+twoBitInfo scaffold4.2bit sizes.tab
+
+#Stwórz dowiązanie symboliczne do pliku zawierającego elementy ultrakonserwatywne
+(utraconserved elements).
+ln -s /home/mkonczal/Teaching/GEiP/Data/UCE-probes/uce-5k-probes.fasta .
+
+#indeksowanie pliku z UCE
+samtools faidx uce-5k-probes.fasta
+bwa index uce-5k-probes.fasta
+UCEprobe=/home/mkonczal/Lab2/uce-5k-probes.fasta
+
+#przyrównanie elementów UCE do genomu biegusa
+phyluce_probe_run_multiple_lastzs_sqlite --db scaffold4.sqlite \
+--output scaffold4-genome-lastz \
+--scaffoldlist scaffold4 \
+--genome-base-path ./ \
+--probefile ${UCEprobe} \
+--cores 10
+
+#tworzymy plik konfiguracyjny
+nano scaffold4.conf
+
+[scaffolds]
+scaffold4:/home/st12/GEiP/lab2/scaffold4/scaffold4.2bit
+
+#wyodrebnienie sekwencji UCE z genomu
+phyluce_probe_slice_sequence_from_genomes --lastz scaffold4-genome-lastz --flank 1000 --output OUT --conf scaffold4.conf --name-pattern uce-5k-probes.fasta_v_scaffold4.lastz.clean
+
+mkdir UCE_regions
+
+#okresl orientacje każdego z UCE na podsatwie nagłówka i zapis do txt
+grep "uce" ../OUT/scaffold4.fasta | cut -d '|' -f 2,3,4,6 | sed -e 's/|/\t/g' | sed -e 's/contig://g' | sed -e 's/slice://g'| sed -e 's/uce://g' | sed -e 's/orient://g' | sed -e 's/uce-/uce_/g' | sed -e s/"'"//g | sed -e 's/{+}/forward/g' | sed -e 's/{-}/reverse/g'| sed -e 's/-/\t/g' >../UCE_regions/scaffold4_UCE_regions.txt
+
+#zapis osobno forward i reverse
+mkdir UCE_regions/forward
+mkdir UCE_regions/reverse
+grep 'forward' UCE_regions/scaffold4_UCE_regions.txt | cut -f 1,2,3 >
+UCE_regions/forward/scaffold4_UCE_forward_orient_regions.txt
+grep 'reverse' UCE_regions/scaffold4_UCE_regions.txt | cut -f 1,2,3 >
+UCE_regions/reverse/scaffold4_UCE_reverse_orient_regions.txt
+
+cut -f 5 scaffold4_UCE_regions.txt | sort | uniq -c
+
+#wywoływanie SNP
+UCE=UCE_regions/forward/scaffold4_UCE_forward_orient_regions.txt
+REF=../lab1/scaffold4.fasta
+BAM1=../lab1/C_ruf_08.bam
+BAM2=../lab1/C_pyg_22.bam
+
+samtools mpileup -l ${UCE} -f ${REF} ${BAM1} > ruf08.forward.mpileup
+samtools mpileup -l ${UCE} -f ${REF} ${BAM2} > pyg22.forward.mpileup
+
+bcftools mpileup --threads 10 -Ou -Q 30 -q 30 -C 50 -a AD,DP -R ${UCE} -f ${REF} ${BAM1} | bcftools call --threads 10 -c -Ob > ruf08.forward.bcf
+bcftools mpileup --threads 10 -Ou -Q 30 -q 30 -C 50 -a AD,DP -R ${UCE} -f ${REF} ${BAM2} | bcftools call --threads 10 -c -Ob > pyg22.forward.bcf
+
+bcftools view out.forward.bcf | less -S
+
+#plik z lokalizacjami bam
+nano bam_list.txt
+
+bcftools mpileup --threads 10 -Ou -Q 30 -q 30 -C 50 -a AD,DP -R ${UCE} -f ${REF} -b bam_list.txt | bcftools call --threads 10 -c -Ob > out.forward_2samples.bcf
+
+# porównanie liczby linii
+cat pyg22.forward.bcf | wc -l
+4196
+cat ruf08.forward.bcf | wc -l
+3682
+cat out.forward_2samples.bcf | wc -l
+10714
+
+BCFruf=ruf08.forward.bcf
+BCFpyg=pyg22.forward.bcf
+
+#statystyki
+bcftools query -f '%QUAL\t%MQ\t%DP\n' ${BCFruf} > Stats_ruf_QualMQDP.txt
+bcftools query -f '%QUAL\t%MQ\t%DP\n' ${BCFpyg} > Stats_pyg_QualMQDP.txt
+bcftools stats ${BCFruf} > Statsruf.stat.txt
+bcftools stats ${BCFpyg} > Statspyg.stat.txt
+
+#filtracja
+bcftools view -v snps -e 'QUAL < 35 || MQ < 5 || FORMAT/DP < 10 || FORMAT/DP > 100' pyg22.forward.bcf > pyg22.forward.filtered.vcf
+bcftools view -v snps -e 'QUAL < 35 || MQ < 5 || FORMAT/DP < 4 || FORMAT/DP > 100' ruf08.forward.bcf > ruf08.forward.filtered.vcf
+
+
+#sprawdzenie powodzenia filtrowania przes wyszukanie wartosci odcietej  obu plikach
+cat pyg22.forward.filtered.vcf | less -S
+bcftools view pyg22.forward.bcf | less -S 
+
+ln -s ../lab1/scaffold4.fasta* .
+galgal=/home/mkonczal/Teaching/GEiP/Data/galGal6
+scaffold=scaffold4.fasta
+
+blastn -query ${scaffold} -db ${galgal}/Gallus_gallus.GRCg6a.dna_rm.toplevel.fa -outfmt 6 > Scaffold4Chicken.blastout
+
+cut –f2 Scaffold4Chicken.blastout
+
+cut –f2 Scaffold4Chicken.blastout | sort | uniq -c
+
+scores=/home/mkonczal/Teaching/GEiP/utilities/HoxD55
+
+lastz ${galgal}/split/${hom_chicken_chr}.fa ${scaffold} --ambiguous=iupac --hspthresh=2200 --inner=2000 --ydrop=3400 --gappedthresh=10000 --scores=${scores} --chain --format=axt > bGalGal6_chr${hom_chicken_chr}.axt
+
+alignment=bGalGal6_chr${hom_chicken_chr}.axt
+
+chicken_2bit=${galgal}/Gallus_gallus.GRCg6a.dna_rm.toplevel.2bit
+
+faToTwoBit scaffold4.fasta scaffold4.2bit 
+
+biegus_2bit=scaffold4.2bit
+
+axtChain -minscore=5000 -linearGap=loose $alignment $chicken_2bit $biegus_2bit bgalgalChr${hom_chicken_chr}_scaff4.chain
+
+chainSort bgalgalChr${hom_chicken_chr}_scaff4.chain sorted_bgalgalChr${hom_chicken_chr}_scaff4.chain
+
+grep "chain" sorted_bgalgalChr${hom_chicken_chr}_scaff4.chain | wc -l
+1418
+
+cp home/mkonczal/Teaching/GEiP/Data/galGal6/split/2.fa .
+
+samtools faidx 2.fa
+cut -f 2 2.fa.fai > 2.chrom.size
+
+samtools faidx scaffold4.fasta
+cut -f 2 scaffold4.fasta.fai > scaffold4.chrom.size
+
+chainNet sorted_bgalgalChr${hom_chicken_chr}_scaff4.chain 2.chrom.size scaffold4.chrom.size all.net /dev/null
+
+netChainSubset all.net sorted_bgalgalChr${hom_chicken_chr}_scaff4.chain galGalChr${hom_chicken_chr}ToSBS_Scaff4.over.chain
+2?
+
+gzip galGalChr${hom_chicken_chr}ToSBS_Scaff4.over.chain
+
+chCADD_dir=/home/mkonczal/Teaching/GEiP/Data/chCADD-scores
+
+mkdir chCADD
+
+cp ${chCADD_dir}/Header.txt .
+cp ${chCADD_dir}/2.txt.gz .
+cat Header.txt > chr2_chCADD.tsv
+zcat 2.txt.gz >> chr2_chCADD.tsv
+
+awk '{print $1,$2-1,$2,$3,$4,$5}' chr2_chCADD.tsv > chr2_chCADD.1based.bed
+rm chr2_chCADD.tsv
+
+conda activate crossmap
+scaffold=scaffold4
+
+CrossMap bed galGalChr${hom_chicken_chr}ToSBS_Scaff4.over.chain.gz chCADD/chr${hom_chicken_chr}_chCADD.1based.bed | head
+
+CrossMap bed galGalChr${hom_chicken_chr}ToSBS_Scaff4.over.chain.gz chCADD/chr${hom_chicken_chr}_chCADD.1based.bed | grep ${scaffold} | grep -v "Unmap" | cut -f 3,4,5,6,7,8 > chr${hom_chicken_chr}-SBS_CADD.bed
+
+
+rm chCADD/*
+
+mkdir Lab4 && cd Lab4
+mkdir C_pyg_22 C_ruf_08
+
+VCF1_f=/home/st12/GEiP/lab2/pyg22.forward.filtered.vcf 
+VCF2_f=/home/st12/GEiP/lab2/ruf08.forward.filtered.vcf
+
+conda activate crossmap
+
+cd C_pyg_22
+vcf2bed --max-mem 4G < ${VCF1_f} > vcf_C_pyg_22_forward.bed
+
+grep -v "INDEL" vcf_C_pyg_22_forward.bed > vcf_C_pyg_22_forward_indelRm.bed
+
+CADD=../../lab3/chr2-SBS_CADD.bed
+bed=vcf_C_pyg_22_forward_indelRm.bed
+
+bedtools intersect -a $CADD -b $bed -wa -wb > vcf_C_pyg_22_forward_indelRm_intersect.bed
+
+script_path=/home/mkonczal/Teaching/GEiP/scripts
+
+awk -v b=6 -v e=100 -f ${script_path}/SNP_check_forward.awk vcf_C_pyg_22_forward_indelRm_intersect.bed > vcf_C_pyg_22_forward_indelRm_intersect_annotated.bed
+
+cut -f 23 vcf_C_pyg_22_forward_indelRm_intersect_annotated.bed | sort | uniq -c
+
+awk '$22 == "SNP_is_ALT_pp=ref"' vcf_C_pyg_22_forward_indelRm_intersect_annotated.bed > vcf_C_pyg_22_forward_indelRm_intersect_annotated_SNP_is_alt.bed
+
+awk -e ' $20 ~ /^0\/0/ ' vcf_C_pyg_22_forward_indelRm_intersect_annotated_SNP_is_alt.bed | cut -f 6 | paste -sd+ - | bc
+
+awk -e '$20 ~ /^0\/1/' vcf_C_pyg_22_forward_indelRm_intersect_annotated_SNP_is_alt.bed | cut -f 6 | paste -sd+ - | bc
+
+awk -e ' $20 ~ /^1\/1/ ' vcf_C_pyg_22_forward_indelRm_intersect_annotated_SNP_is_alt.bed | cut -f 6 | paste -sd+ - | bc
+
+(crossmap) st12@bzc1:~/GEiP/lab4/C_pyg_22$ awk -e ' $20 ~ /^0\/0/ ' vcf_C_pyg_22_forward_indelRm_intersect_annotated_SNP_is_alt.bed | cut -f 6 | paste -sd+ - | bc
+(crossmap) st12@bzc1:~/GEiP/lab4/C_pyg_22$ awk -e ' $20 ~ /^1\/1/ ' vcf_C_pyg_22_forward_indelRm_intersect_annotated_SNP_is_alt.bed | cut -f 6 | paste -sd+ - | bc
+72.49795
+(crossmap) st12@bzc1:~/GEiP/lab4/C_pyg_22$ awk -e ' $20 ~ /^0\/1/ ' vcf_C_pyg_22_forward_indelRm_intersect_annotated_SNP_is_alt.bed | cut -f 6 | paste -sd+ - | bc
+221.81367
+
+RUF
+cd C_ruf_08
+vcf2bed --max-mem 4G < ${VCF2_f} > vcf_C_ruf_08_forward.bed
+
+grep -v "INDEL" vcf_C_ruf_08_forward.bed > vcf_C_ruf_08_forward_indelRm.bed
+
+CADD=../../lab3/chr2-SBS_CADD.bed
+bed2=vcf_C_ruf_08_forward_indelRm.bed
+
+bedtools intersect -a $CADD -b $bed2 -wa -wb > vcf_C_ruf_08_forward_indelRm_intersect.bed
+
+script_path=/home/mkonczal/Teaching/GEiP/scripts
+
+awk -v b=6 -v e=100 -f ${script_path}/SNP_check_forward.awk vcf_C_ruf_08_forward_indelRm_intersect.bed > vcf_C_ruf_08_forward_indelRm_intersect_annotated.bed
+
+cut -f 23 vcf_C_ruf_08_forward_indelRm_intersect_annotated.bed | sort | uniq -c
+
+awk '$22 == "SNP_is_ALT_pp=ref"' vcf_C_ruf_08_forward_indelRm_intersect_annotated.bed > vcf_C_ruf_08_forward_indelRm_intersect_annotated_SNP_is_alt.bed
+
+awk -e ' $20 ~ /^0\/0/ ' vcf_C_ruf_08_forward_indelRm_intersect_annotated_SNP_is_alt.bed | cut -f 6 | paste -sd+ - | bc
+
+awk -e '$20 ~ /^0\/1/' vcf_C_ruf_08_forward_indelRm_intersect_annotated_SNP_is_alt.bed | cut -f 6 | paste -sd+ - | bc
+
+awk -e ' $20 ~ /^1\/1/ ' vcf_C_ruf_08_forward_indelRm_intersect_annotated_SNP_is_alt.bed | cut -f 6 | paste -sd+ - | bc
+
+
+(crossmap) st12@bzc1:~/GEiP/lab4/C_ruf_08$ awk -e ' $20 ~ /^0\/0/ ' vcf_C_ruf_08_forward_indelRm_intersect_annotated_SNP_is_alt.bed | cut -f 6 | paste -sd+ - | bc
+(crossmap) st12@bzc1:~/GEiP/lab4/C_ruf_08$ awk -e '$20 ~ /^0\/1/' vcf_C_ruf_08_forward_indelRm_intersect_annotated_SNP_is_alt.bed | cut -f 6 | paste -sd+ - | bc
+352.93814
+(crossmap) st12@bzc1:~/GEiP/lab4/C_ruf_08$ awk -e ' $20 ~ /^1\/1/ ' vcf_C_ruf_08_forward_indelRm_intersect_annotated_SNP_is_alt.bed | cut -f 6 | paste -sd+ - | bc
+592.83175
+
+PYTANIA
+1. RUF08 - 201
+PYG22 - 63
+2.
+RUF08 
+homozygoty - 127
+heterozygoty - 74
+awk -e '$20 ~ /^0\/1/' vcf_C_ruf_08_forward_indelRm_intersect_annotated_SNP_is_alt.bed | wc -l
+awk -e '$20 ~ /^1\/1/' vcf_C_ruf_08_forward_indelRm_intersect_annotated_SNP_is_alt.bed | wc -l
+
+PYG22
+homozygoty - 18
+heterozygoty - 45
+awk -e '$20 ~ /^0\/1/' vcf_C_pyg_22_forward_indelRm_intersect_annotated_SNP_is_alt.bed | wc -l
+awk -e '$20 ~ /^1\/1/' vcf_C_pyg_22_forward_indelRm_intersect_annotated_SNP_is_alt.bed | wc -l
+
+
+

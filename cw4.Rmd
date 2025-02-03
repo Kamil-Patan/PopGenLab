@@ -1,0 +1,214 @@
+---
+title: "GEiP"
+author: "Sebastian Chmielewski"
+date: "2025-01-22"
+output: html_document
+---
+
+Na ostatnich zajęciach wprowadzimy *RMarkdown*. Jest to format, który umożliwia szybkie tworzenie raportu i przeplatanie fragmentów kodu z notatkami. 
+
+Fragmenty kodu (chunks) zaczynają się od nagłówka (```{r <nazwa fragmentu}) oraz kończą ```, np.:
+
+```{r setup, include=FALSE}
+# , include=FALSE oznacza, że ten fragment kodu nie zostanie wygenerowany w raporcie
+knitr::opts_chunk$set(echo = TRUE)
+setwd("~/Desktop")
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+```
+
+Żeby wygenerować raport, kliknij przycisk **Knit** na górze ekranu. 
+
+
+```{r wczytaj plik VCF z chCADD scores}
+vcf_pyg <- read.table("C:/Users/kamis/OneDrive/Pulpit/vcf_C_pyg_22_forward_indelRm_intersect_annotated_SNP_is_alt.bed")[,c(1,3,6,20)]
+colnames(vcf_pyg) <- c("chr", "pos", "chCADD", "FORMAT")
+
+# policz warianty
+n_variants_pyg <- nrow(vcf_pyg)
+
+# wyciągnij informacje o homozygotach/heterozygotach. Użyj funkcji separate z paczki tidyr. 
+vcf_pyg %>%
+  separate(FORMAT, into = "genotype", sep = ":")
+
+# jeśli chcesz pozbyć się ostrzeżenia, dodaj paramter extra:
+vcf_pyg %>%
+  separate(FORMAT, into = "genotype", sep = ":", extra = "drop") 
+
+# zmiana 0/0 na hom_ref etc. 
+vcf_pyg <- vcf_pyg %>%
+  separate(FORMAT, into = "genotype", sep = ":", extra = "drop") %>%
+  mutate(genotype = ifelse(genotype == "0/1", "HET", 
+                           ifelse(genotype == "1/1", "HOM_ALT", 
+                                  ifelse(genotype == "0/0", "HOM_REF", "error"))))
+
+# policz heterozygoty i homozygoty:
+table(vcf_pyg$genotype)
+
+# policz ponownie:
+vcf_pyg %>%
+  group_by(genotype) %>%
+  tally()
+
+n_HET_p <- vcf_pyg %>%
+  group_by(genotype) %>%
+  tally() %>%
+  filter(genotype == "HET") %>%
+  pull()
+
+n_HOM_p <- vcf_pyg %>%
+  group_by(genotype) %>%
+  tally() %>%
+  filter(genotype == "HOM_ALT") %>%
+  pull()
+
+paste0("W danych zidentyfikowano ", n_HET_p, " heterozygot i ", n_HOM_p, " homozygot.")
+
+
+#RUF
+vcf_1 <- read.table("C:/Users/kamis/OneDrive/Pulpit/vcf_C_ruf_08_forward_indelRm_intersect_annotated_SNP_is_alt.bed")[,c(1,3,6,20)]
+
+colnames(vcf_1) <- c("chr", "pos", "chCADD", "FORMAT")
+
+# policz warianty
+n_variants <- nrow(vcf_1)
+
+# wyciągnij informacje o homozygotach/heterozygotach. Użyj funkcji separate z paczki tidyr. 
+vcf_1 %>%
+  separate(FORMAT, into = "genotype", sep = ":")
+
+# jeśli chcesz pozbyć się ostrzeżenia, dodaj paramter extra:
+vcf_1 %>%
+  separate(FORMAT, into = "genotype", sep = ":", extra = "drop") 
+
+# zmiana 0/0 na hom_ref etc. 
+vcf_1 <- vcf_1 %>%
+  separate(FORMAT, into = "genotype", sep = ":", extra = "drop") %>%
+  mutate(genotype = ifelse(genotype == "0/1", "HET", 
+                           ifelse(genotype == "1/1", "HOM_ALT", 
+                                  ifelse(genotype == "0/0", "HOM_REF", "error"))))
+
+# policz heterozygoty i homozygoty:
+table(vcf_1$genotype)
+
+# policz ponownie:
+vcf_1 %>%
+  group_by(genotype) %>%
+  tally()
+
+n_HET <- vcf_1 %>%
+  group_by(genotype) %>%
+  tally() %>%
+  filter(genotype == "HET") %>%
+  pull()
+
+n_HOM <- vcf_1 %>%
+  group_by(genotype) %>%
+  tally() %>%
+  filter(genotype == "HOM_ALT") %>%
+  pull()
+
+paste0("W danych zidentyfikowano ", n_HET, " heterozygot i ", n_HOM, " homozygot.")
+```
+Wizualizacja wzdłuż scaffoldu
+
+```{r wizualizacja}
+ggplot(vcf_1, aes(pos, chCADD)) +
+  geom_point() +
+  ggtitle("chCADD, scaffold 4, individual ruf_08", 
+          subtitle = paste0(n_variants, " variants"))
+
+ggplot(vcf_pyg, aes(pos, chCADD)) +
+  geom_point() +
+  ggtitle("chCADD, scaffold 4, individual pyg_22", 
+          subtitle = paste0(n_variants_pyg, " variants"))
+
+# zwizualizuj chCADD wzdłuż scaffoldu z podziałem na genotyp.
+```
+
+Czy homozygoty i heterozygoty różnią się chCADD?
+
+```{r chCADD ~ genotyp}
+#boxploty oraz testy dla obu gatunków
+vcf_1 %>%
+  ggplot(aes(chCADD)) +
+  geom_density() +
+  facet_wrap(~genotype)
+
+vcf_1 %>%
+  ggplot(aes(x = genotype, y = chCADD)) +
+  geom_boxplot() +
+  geom_jitter(width = .2) +
+  ggtitle("C_ruf") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+vcf_pyg %>%
+  ggplot(aes(x = genotype, y = chCADD)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.2) +
+  ggtitle("C_pyg") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+wilcox.test(chCADD ~ genotype, data = vcf_1)
+
+wilcox.test(chCADD ~ genotype, data = vcf_pyg)
+
+vcf_1 %>%
+     ggplot(aes(chCADD)) +
+   geom_histogram() + 
+   facet_grid(row = "genotype")
+
+vcf_pyg %>%
+     ggplot(aes(chCADD)) +
+   geom_histogram() + 
+   facet_grid(row = "genotype")
+
+```
+```{r}
+#złączenie plików obu gatunków, utworzenie wykresu oraz test
+vcf_1$gat <- "C_ruf"
+vcf_pyg$gat <- "C_pyg"
+
+vcf3 <- rbind(vcf_1, vcf_pyg)
+
+vcf3 %>%
+  ggplot(aes(chCADD)) +
+  geom_density() +
+  facet_wrap(~genotype)
+
+vcf3 %>%
+  ggplot(aes(x = gat, y = chCADD)) +
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(width = .2)
+
+wilcox.test(chCADD ~ gat, data = vcf3)
+
+```
+
+```{r}
+#zbadanie korelacji wyników z pozycja w genomie dla obu gatunków
+correlation <- cor.test(vcf_1$pos, vcf_1$chCADD, method = "spearman", exact = FALSE)
+print(correlation)
+
+ggplot(vcf_1, aes(x = pos, y = chCADD)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "loess", color = "blue", se = FALSE) +
+  labs(title = "Korelacja wartości chCADD z pozycją SNP (C_ruf)",
+       x = "Pozycja (pos)",
+       y = "chCADD") +
+  theme_minimal()
+
+correlation_pyg <- cor.test(vcf_pyg$pos, vcf_pyg$chCADD, method = "spearman", exact = FALSE)
+print(correlation_pyg)
+
+ggplot(vcf_pyg, aes(x = pos, y = chCADD)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "loess", color = "blue", se = FALSE) +
+  labs(title = "Korelacja wartości chCADD z pozycją SNP (C_pyg)",
+       x = "Pozycja (pos)",
+       y = "chCADD") +
+  theme_minimal()
+
+
+```
